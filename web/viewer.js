@@ -2072,6 +2072,12 @@ window.addEventListener('keydown', function keydown(evt) {
         handled = true;
         break;
 
+    case 116: // f5
+      if(PDFViewerApplication.dualPresenter == null){
+        handled = true;
+          break;
+        }
+      /* falls through */
       case 36: // home
         if(PDFViewerApplication.dualPresenter == "master"){
           window.clientManager.page(1);
@@ -2107,6 +2113,7 @@ window.addEventListener('keydown', function keydown(evt) {
       case 82: // 'r'
         PDFViewerApplication.rotatePages(90);
         break;
+      
     }
   }
 
@@ -2220,8 +2227,13 @@ function Clock(time){
     setContent( delta );
   }
   function setContent(delta){
+    var prefix = "";
     delta = Math.floor(delta / 1000);
-    div.innerHTML = pad(Math.floor(delta / 60)) + ":" + pad(delta % 60);
+    if(delta<0) {
+      prefix = "-";
+      delta = -delta;
+    }
+    div.innerHTML = prefix + pad(Math.floor(delta / 60)) + ":" + pad(delta % 60);
   }
   return {start:start, reset:reset};
 }
