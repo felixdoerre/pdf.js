@@ -117,6 +117,7 @@ var PDFViewerApplication = {
   preferenceDefaultZoomValue: '',
   isViewerEmbedded: (window.parent !== window),
   url: '',
+  clock: null,
 
   // called once when the document is loaded
   initialize: function pdfViewInitialize() {
@@ -197,6 +198,7 @@ var PDFViewerApplication = {
         'pageCount': document.getElementById('pageCountField')
       }
     });
+    this.clock = new Clock();
 
     SecondaryToolbar.initialize({
       toolbar: document.getElementById('secondaryToolbar'),
@@ -1203,6 +1205,10 @@ var PDFViewerApplication = {
     if (!this.pdfPresentationMode) {
       return;
     }
+    if( window.clientManager ){
+      window.clientManager.present();
+      return;
+    }
     this.pdfPresentationMode.request();
   },
 
@@ -1515,23 +1521,7 @@ function webViewerInitialized() {
 //  ChromeCom.openPDFFile(file);
 //}
 //#endif
-  if( window.opener && window.opener.clientCallback){
-    window.opener.clientCallback({
-        page: function(page){
-            PDFViewerApplication.page = page;
-        },
-        next: function(){
-            return ++PDFViewerApplication.page;
-        },
-        prev: function(){
-            return --PDFViewerApplication.page;
-        },
-        present: function(){
-	    console.log("foreign presenter");
-            PDFViewerApplication.requestPresentationMode();
-        }
-      });
-  }
+  window.open("viewer.html", "pdfjsPresenterClient", "left=1920, top=0, width=1920, height=1080, menubar=true, toolbar=true, personalbar=true");
 }
 
 document.addEventListener('DOMContentLoaded', webViewerLoad, true);
@@ -1905,6 +1895,7 @@ window.addEventListener('keydown', function keydown(evt) {
 
   var pdfViewer = PDFViewerApplication.pdfViewer;
   var isViewerInPresentationMode = pdfViewer && pdfViewer.isInPresentationMode;
+  isViewerInPresentationMode = true
 
   // First, handle the key bindings that are independent whether an input
   // control is selected or not.
@@ -2020,7 +2011,8 @@ window.addEventListener('keydown', function keydown(evt) {
         /* falls through */
       case 75: // 'k'
       case 80: // 'p'
-        PDFViewerApplication.page--;
+        PDFViewerApplication.clock.start();
+        PDFViewerApplication.page = window.clientManager.prev();
         handled = true;
         break;
       case 27: // esc key
@@ -2050,13 +2042,16 @@ window.addEventListener('keydown', function keydown(evt) {
         /* falls through */
       case 74: // 'j'
       case 78: // 'n'
-        PDFViewerApplication.page++;
+        PDFViewerApplication.clock.start();
+        PDFViewerApplication.page = window.clientManager.next();
         handled = true;
         break;
 
       case 36: // home
         if (isViewerInPresentationMode || PDFViewerApplication.page > 1) {
           PDFViewerApplication.page = 1;
+          window.clientManager.page(1);
+          PDFViewerApplication.clock.reset();
           handled = true;
           ensureViewerFocused = true;
         }
@@ -2068,6 +2063,10 @@ window.addEventListener('keydown', function keydown(evt) {
           handled = true;
           ensureViewerFocused = true;
         }
+        break;
+      case 10: // newline
+      case 13: // newline
+        window.clientManager.page(PDFViewerApplication.page);
         break;
 
       case 72: // 'h'
@@ -2153,3 +2152,40 @@ window.addEventListener('afterprint', function afterPrint(evt) {
     window.requestAnimationFrame(resolve);
   });
 })();
+
+window.clientCallback = function(manager){
+  window.clientManager = manager;
+};
+function Clock(){
+  var div = document.getElementById("clock");
+  function millis(){
+    return new Date().getTime();
+  }
+  var startmillis = -1;
+  var intv = 0;
+  function start(){
+    if(intv != 0) return;
+    startmillis = millis();
+    intv = setInterval(update, 300);
+  }
+  function reset(){
+    if(intv == 0) return;
+    clearInterval(intv);
+    intv = 0;
+  }
+  function pad(s){
+    s = "" + s;
+    while(s.length < 2){
+      s = "0" + s;
+    }
+    return s;
+  }
+  function update(){
+    var delta = millis() - startmillis;
+    delta = 30 * 60 * 1000 - delta;
+    delta = Math.floor(delta / 1000);
+    
+    div.innerHTML = pad(Math.floor(delta / 60)) + ":" + pad(delta % 60);
+  }
+  return {start:start, reset:reset};
+}

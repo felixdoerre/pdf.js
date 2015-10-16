@@ -95,7 +95,7 @@ See https://github.com/adobe-type-tools/cmap-resources
 
 <!--#if !MINIFIED -->
     <script src="debugger.js"></script>
-    <script src="viewer.js"></script>
+    <script src="viewerMaster.js"></script>
 <!--#else-->
 <!--#include viewer-snippet-minified.html-->
 <!--#endif-->
@@ -392,7 +392,9 @@ See https://github.com/adobe-type-tools/cmap-resources
 <!--#include viewer-snippet-chrome-overlays.html-->
 <!--#endif-->
       </div>  <!-- overlayContainer -->
-
+      <div id="clock" style="border: 1px solid black; border-radius: 4px; position: absolute; left:200px; top:100px; width:200px; height:100px; background-color:#474747; font-weight: bold; color:#FFFFFF; font-size: 40px; text-align: center" class="dialog">
+	30:00
+      </div>
     </div> <!-- outerContainer -->
     <div id="printContainer"></div>
 <!--#if !(FIREFOX || MOZCENTRAL)-->
