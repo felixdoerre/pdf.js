@@ -1532,7 +1532,7 @@ function webViewerInitialized() {
       });
   }
   if( PDFViewerApplication.dualPresenter == "master" ){
-    PDFViewerApplication.clock = new Clock();
+    PDFViewerApplication.clock = new Clock('time' in params ? params.time : "30:00");
     window.clientCallback = function(manager){
       window.clientManager = manager;
     };
@@ -2183,8 +2183,13 @@ window.addEventListener('afterprint', function afterPrint(evt) {
   });
 })();
 
-function Clock(){
+function Clock(time){
   var div = document.getElementById("clock");
+
+  var parts = time.split(":");
+  var maxtime = (parts[0]*60+(parts[1]|0))*1000;
+  setContent(maxtime);
+
   div.classList.remove("hidden");
   function millis(){
     return new Date().getTime();
@@ -2199,6 +2204,7 @@ function Clock(){
   function reset(){
     if(intv == 0) return;
     clearInterval(intv);
+    setContent(maxtime);
     intv = 0;
   }
   function pad(s){
@@ -2210,9 +2216,11 @@ function Clock(){
   }
   function update(){
     var delta = millis() - startmillis;
-    delta = 30 * 60 * 1000 - delta;
+    delta = maxtime - delta;
+    setContent( delta );
+  }
+  function setContent(delta){
     delta = Math.floor(delta / 1000);
-    
     div.innerHTML = pad(Math.floor(delta / 60)) + ":" + pad(delta % 60);
   }
   return {start:start, reset:reset};
