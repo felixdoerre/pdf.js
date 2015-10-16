@@ -27,7 +27,7 @@
 
 'use strict';
 
-var DEFAULT_URL = 'bachelorSlides.pdf';
+var DEFAULT_URL = 'compressed.tracemonkey-pldi-09.pdf';
 var DEFAULT_SCALE_DELTA = 1.1;
 var MIN_SCALE = 0.25;
 var MAX_SCALE = 10.0;
@@ -1536,7 +1536,7 @@ function webViewerInitialized() {
     window.clientCallback = function(manager){
       window.clientManager = manager;
     };
-    window.open("viewer.html?presenterMode=client", "pdfjsPresenterClient", "left=1920, top=0, width=1920, height=1080, menubar=true, toolbar=true, personalbar=true");
+    window.open("viewer.html?presenterMode=client&file="+encodeURIComponent(file), "pdfjsPresenterClient", "left=1920, top=0, width=1920, height=1080, menubar=true, toolbar=true, personalbar=true");
   }
 }
 
