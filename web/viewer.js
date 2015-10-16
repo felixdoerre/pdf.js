@@ -117,6 +117,8 @@ var PDFViewerApplication = {
   preferenceDefaultZoomValue: '',
   isViewerEmbedded: (window.parent !== window),
   url: '',
+  dualPresenter: null,
+  clock: null,
 
   // called once when the document is loaded
   initialize: function pdfViewInitialize() {
@@ -1246,6 +1248,7 @@ function webViewerInitialized() {
   var queryString = document.location.search.substring(1);
   var params = parseQueryString(queryString);
   var file = 'file' in params ? params.file : DEFAULT_URL;
+  PDFViewerApplication.dualPresenter = 'presentermode' in params ? params.presentermode : null;
 //#endif
 //#if (FIREFOX || MOZCENTRAL)
 //var file = window.location.href.split('#')[0];
@@ -1515,7 +1518,7 @@ function webViewerInitialized() {
 //  ChromeCom.openPDFFile(file);
 //}
 //#endif
-  if( window.opener && window.opener.clientCallback){
+  if( PDFViewerApplication.dualPresenter == "client" && window.opener && window.opener.clientCallback){
     window.opener.clientCallback({
         page: function(page){
             PDFViewerApplication.page = page;
@@ -1526,11 +1529,14 @@ function webViewerInitialized() {
         prev: function(){
             return --PDFViewerApplication.page;
         },
-        present: function(){
-	    console.log("foreign presenter");
-            PDFViewerApplication.requestPresentationMode();
-        }
       });
+  }
+  if( PDFViewerApplication.dualPresenter == "master" ){
+    PDFViewerApplication.clock = new Clock();
+    window.clientCallback = function(manager){
+      window.clientManager = manager;
+    };
+    window.open("viewer.html?presenterMode=client", "pdfjsPresenterClient", "left=1920, top=0, width=1920, height=1080, menubar=true, toolbar=true, personalbar=true");
   }
 }
 
@@ -1905,7 +1911,9 @@ window.addEventListener('keydown', function keydown(evt) {
 
   var pdfViewer = PDFViewerApplication.pdfViewer;
   var isViewerInPresentationMode = pdfViewer && pdfViewer.isInPresentationMode;
-
+  if(PDFViewerApplication.dualPresenter == "master"){
+    isViewerInPresentationMode = true;
+  }
   // First, handle the key bindings that are independent whether an input
   // control is selected or not.
   if (cmd === 1 || cmd === 8 || cmd === 5 || cmd === 12) {
@@ -2020,7 +2028,12 @@ window.addEventListener('keydown', function keydown(evt) {
         /* falls through */
       case 75: // 'k'
       case 80: // 'p'
-        PDFViewerApplication.page--;
+        if(PDFViewerApplication.dualPresenter == "master"){
+          PDFViewerApplication.clock.start();
+          PDFViewerApplication.page = window.clientManager.prev();
+        }else{
+          PDFViewerApplication.page--;
+        }
         handled = true;
         break;
       case 27: // esc key
@@ -2050,11 +2063,20 @@ window.addEventListener('keydown', function keydown(evt) {
         /* falls through */
       case 74: // 'j'
       case 78: // 'n'
-        PDFViewerApplication.page++;
+        if(PDFViewerApplication.dualPresenter == "master"){
+          PDFViewerApplication.clock.start();
+          PDFViewerApplication.page = window.clientManager.next();
+        }else{
+          PDFViewerApplication.page++;
+        }
         handled = true;
         break;
 
       case 36: // home
+        if(PDFViewerApplication.dualPresenter == "master"){
+          window.clientManager.page(1);
+          PDFViewerApplication.clock.reset();
+        }
         if (isViewerInPresentationMode || PDFViewerApplication.page > 1) {
           PDFViewerApplication.page = 1;
           handled = true;
@@ -2067,6 +2089,13 @@ window.addEventListener('keydown', function keydown(evt) {
           PDFViewerApplication.page = PDFViewerApplication.pagesCount;
           handled = true;
           ensureViewerFocused = true;
+        }
+        break;
+      case 10: // newline
+      case 13: // newline
+        if(PDFViewerApplication.dualPresenter == "master"){
+          window.clientManager.page(PDFViewerApplication.page);
+          handled = true;
         }
         break;
 
@@ -2153,3 +2182,38 @@ window.addEventListener('afterprint', function afterPrint(evt) {
     window.requestAnimationFrame(resolve);
   });
 })();
+
+function Clock(){
+  var div = document.getElementById("clock");
+  div.classList.remove("hidden");
+  function millis(){
+    return new Date().getTime();
+  }
+  var startmillis = -1;
+  var intv = 0;
+  function start(){
+    if(intv != 0) return;
+    startmillis = millis();
+    intv = setInterval(update, 300);
+  }
+  function reset(){
+    if(intv == 0) return;
+    clearInterval(intv);
+    intv = 0;
+  }
+  function pad(s){
+    s = "" + s;
+    while(s.length < 2){
+      s = "0" + s;
+    }
+    return s;
+  }
+  function update(){
+    var delta = millis() - startmillis;
+    delta = 30 * 60 * 1000 - delta;
+    delta = Math.floor(delta / 1000);
+    
+    div.innerHTML = pad(Math.floor(delta / 60)) + ":" + pad(delta % 60);
+  }
+  return {start:start, reset:reset};
+}
